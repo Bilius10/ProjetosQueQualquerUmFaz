@@ -1,17 +1,20 @@
 import flet as ft
 import requests
+import threading
 import time
 from Session import session
 
+thread_running = False
+
 
 def statusPage(page_buscar):
+    global thread_running
 
     iconeStatus = ft.Icon(
         name=ft.icons.CIRCLE,
-        color=ft.colors.WHITE,
+        color=ft.Colors.WHITE,
         size=50,
     )
-
 
     horasOnline = ft.Text(
         value="00:00:00",
@@ -21,7 +24,6 @@ def statusPage(page_buscar):
         weight=ft.FontWeight.BOLD,
     )
 
-  
     horasOffline = ft.Text(
         value="00:00:00",
         size=18,
@@ -30,24 +32,52 @@ def statusPage(page_buscar):
         weight=ft.FontWeight.BOLD,
     )
 
-    try:
-        response = requests.get(f"{session.user_data.get('url')}")
-        if response.status_code == 200:
-            iconeStatus.color = ft.Colors.GREEN
-        else:
-            iconeStatus.color = ft.Colors.RED
+    def monitorar_status():
+        global thread_running
+        online_time = 0
+        offline_time = 0
+
+        while thread_running:
+            try:
+                response = requests.get(f"{session.user_data.get('url')}")
+                if response.status_code == 200:
+                    offline_time = 0
+                    iconeStatus.color = ft.Colors.GREEN
+                    online_time += 1
+                else:
+                    online_time = 0
+                    iconeStatus.color = ft.Colors.RED
+                    offline_time += 1
+            except requests.exceptions.RequestException:
+                online_time = 0
+                iconeStatus.color = ft.Colors.RED
+                offline_time += 1
+
+            horasOnline.value = time.strftime(
+                "%H:%M:%S", time.gmtime(online_time))
+            horasOffline.value = time.strftime(
+                "%H:%M:%S", time.gmtime(offline_time))
+
             iconeStatus.update()
-    except requests.exceptions.RequestException as e:
-        iconeStatus.color = ft.Colors.RED
-        iconeStatus.update()
-    
-    
+            horasOnline.update()
+            horasOffline.update()
+
+            time.sleep(1)
+
+    thread_running = True
+    monitor_thread = threading.Thread(target=monitorar_status)
+    monitor_thread.start()
+
+    def voltar(event):
+        global thread_running
+        thread_running = False
+        page_buscar(event)
 
     return ft.Container(
         content=ft.Column(
             [
                 ft.Text(
-                    f"{session.user_data['url']}",
+                    f"Status de {session.user_data['url']}",
                     size=24,
                     color=ft.Colors.WHITE,
                     weight=ft.FontWeight.BOLD,
@@ -55,7 +85,7 @@ def statusPage(page_buscar):
                 ),
                 ft.Container(height=20),  
 
-                
+  
                 iconeStatus,
 
                 ft.Container(height=10),  
@@ -67,7 +97,7 @@ def statusPage(page_buscar):
                 ),
                 ft.Container(height=20),  
 
-             
+
                 ft.Row(
                     [
                         ft.Column(
@@ -93,7 +123,7 @@ def statusPage(page_buscar):
 
                 ft.ElevatedButton(
                     text="Voltar",
-                    on_click=page_buscar,
+                    on_click=voltar,
                     bgcolor=ft.Colors.BLUE_GREY_700,
                     color=ft.Colors.WHITE,
                     width=200,

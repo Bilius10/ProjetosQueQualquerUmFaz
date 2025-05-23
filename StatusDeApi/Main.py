@@ -1,5 +1,4 @@
 import flet as ft
-import time
 from BuscarApi import acharAPI
 from StatusPage import statusPage
 
@@ -19,6 +18,9 @@ def main(page: ft.Page):
     def status_page(event):
         page.clean()
         page.add(statusPage(buscar_page))
+
+
+        
        
 
     buscar_page(event=None)
